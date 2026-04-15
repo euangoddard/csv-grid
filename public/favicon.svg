@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
+  <!-- Background -->
+  <rect width="16" height="16" rx="2.5" fill="#2563eb"/>
+
+  <!-- Header row — solid white, full width -->
+  <rect x="2" y="2" width="12" height="4" rx="0.5" fill="white"/>
+
+  <!-- Vertical column divider — cuts through header + body -->
+  <rect x="7.5" y="2" width="1" height="12" fill="#2563eb"/>
+
+  <!-- Body data rows (left column: brighter; right column: dimmer) -->
+  <rect x="2"   y="8"  width="5" height="2" rx="0.5" fill="white" opacity="0.85"/>
+  <rect x="9"   y="8"  width="5" height="2" rx="0.5" fill="white" opacity="0.5"/>
+
+  <rect x="2"   y="12" width="5" height="2" rx="0.5" fill="white" opacity="0.85"/>
+  <rect x="9"   y="12" width="5" height="2" rx="0.5" fill="white" opacity="0.5"/>
+</svg>
