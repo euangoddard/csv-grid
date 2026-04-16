@@ -149,7 +149,7 @@ export function App() {
         <button
           type="button"
           onClick={handleNew}
-          class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 transition-colors cursor-pointer"
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border border-green-600 bg-green-600 hover:bg-green-700 text-white transition-colors cursor-pointer"
         >
           New
         </button>
