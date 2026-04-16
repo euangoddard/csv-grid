@@ -1,13 +1,16 @@
-import { render } from 'preact'
-import './index.css'
-import { App } from './app'
+import { render } from "preact";
+import "./index.css";
+import { App } from "./app";
 
-render(<App />, document.getElementById('app')!)
+const appRoot = document.getElementById("app");
+if (appRoot) {
+  render(<App />, appRoot);
+}
 
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch((err) => {
-      console.warn('Service worker registration failed:', err)
-    })
-  })
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch((err) => {
+      console.warn("Service worker registration failed:", err);
+    });
+  });
 }
