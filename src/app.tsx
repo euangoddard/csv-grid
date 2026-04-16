@@ -1,6 +1,8 @@
 import { useRef, useEffect, useState, useCallback } from 'preact/hooks'
 import Papa from 'papaparse'
 import { saveSession, loadSession, clearSession, type CellValue } from './db'
+import { type Format, delimiterFor, formatFromFileName } from './format'
+import { DownloadSplitButton } from './DownloadSplitButton'
 
 interface Status {
   message: string
@@ -21,10 +23,12 @@ export function App() {
   const containerRef = useRef<HTMLDivElement>(null)
   const gridRef = useRef<DataGridXL | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const statusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const persistRef = useRef<() => void>(() => {})
+
   const [fileName, setFileName] = useState<string | null>(null)
   const [status, setStatus] = useState<Status | null>(null)
   const [restoring, setRestoring] = useState(true)
-  const statusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const showStatus = useCallback((message: string, isError = false) => {
     if (statusTimerRef.current !== null) clearTimeout(statusTimerRef.current)
@@ -33,8 +37,6 @@ export function App() {
   }, [])
 
   // Persist the current grid state to IndexedDB (debounced).
-  const persistRef = useRef<() => void>(() => {})
-
   useEffect(() => {
     persistRef.current = debounce(() => {
       const data = gridRef.current?.getData()
@@ -73,6 +75,7 @@ export function App() {
 
       Papa.parse<CellValue[]>(file, {
         skipEmptyLines: true,
+        delimiter: delimiterFor(formatFromFileName(file.name)),
         complete(results) {
           const data = results.data
           if (!data.length) {
@@ -94,29 +97,34 @@ export function App() {
     [showStatus],
   )
 
-  const handleDownload = useCallback(() => {
-    const data = gridRef.current?.getData()
-    if (!data) return
+  const handleDownload = useCallback(
+    (format: Format) => {
+      const data = gridRef.current?.getData()
+      if (!data) return
 
-    let lastNonEmpty = data.length - 1
-    while (
-      lastNonEmpty > 0 &&
-      data[lastNonEmpty].every((c) => c === '' || c == null)
-    ) {
-      lastNonEmpty--
-    }
-    const trimmed = data.slice(0, lastNonEmpty + 1)
+      let lastNonEmpty = data.length - 1
+      while (
+        lastNonEmpty > 0 &&
+        data[lastNonEmpty].every((c) => c === '' || c == null)
+      ) {
+        lastNonEmpty--
+      }
+      const trimmed = data.slice(0, lastNonEmpty + 1)
 
-    const csv = Papa.unparse(trimmed)
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = fileName ?? 'export.csv'
-    a.click()
-    URL.revokeObjectURL(url)
-    showStatus(`Downloaded ${a.download}`)
-  }, [fileName, showStatus])
+      const mimeType = format === 'tsv' ? 'text/tab-separated-values' : 'text/csv'
+      const content = Papa.unparse(trimmed, { delimiter: delimiterFor(format) })
+      const blob = new Blob([content], { type: `${mimeType};charset=utf-8;` })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      const baseName = (fileName ?? 'export').replace(/\.(csv|tsv)$/i, '')
+      a.download = `${baseName}.${format}`
+      a.click()
+      URL.revokeObjectURL(url)
+      showStatus(`Downloaded ${a.download}`)
+    },
+    [fileName, showStatus],
+  )
 
   const handleNew = useCallback(() => {
     const emptyData = window.DataGridXL.createEmptyData(50, 26)
@@ -142,22 +150,17 @@ export function App() {
           onClick={() => fileInputRef.current?.click()}
           class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 transition-colors cursor-pointer"
         >
-          Open CSV…
+          Open CSV / TSV…
         </button>
         <input
           ref={fileInputRef}
           type="file"
-          accept=".csv,text/csv"
+          accept=".csv,.tsv,text/csv,text/tab-separated-values"
           class="hidden"
           onChange={handleFileOpen}
         />
 
-        <button
-          onClick={handleDownload}
-          class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md bg-blue-600 hover:bg-blue-700 text-white transition-colors cursor-pointer"
-        >
-          Download CSV
-        </button>
+        <DownloadSplitButton fileName={fileName} onDownload={handleDownload} />
 
         {fileName && (
           <span class="ml-2 text-sm text-gray-500 truncate max-w-xs" title={fileName}>
