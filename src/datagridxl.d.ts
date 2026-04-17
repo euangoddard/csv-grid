@@ -11,7 +11,7 @@ interface DataGridXLOptions {
 }
 
 interface DataGridXLEvents {
-  on(event: "documentchange", callback: () => void): void;
+  on(event: "cellvaluechange", callback: () => void): void;
   on(event: string, callback: (...args: unknown[]) => void): void;
 }
 

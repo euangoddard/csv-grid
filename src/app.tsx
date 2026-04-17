@@ -19,6 +19,8 @@ function debounce<T extends () => void>(fn: T, delay: number): T {
   }) as T;
 }
 
+const EMPTY_GRID = { rows: 50, cols: 26 } as const;
+
 export function App() {
   const containerRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<DataGridXL | null>(null);
@@ -36,7 +38,6 @@ export function App() {
     statusTimerRef.current = setTimeout(() => setStatus(null), 3000);
   }, []);
 
-  // Persist the current grid state to IndexedDB (debounced).
   useEffect(() => {
     persistRef.current = debounce(() => {
       const data = gridRef.current?.getData();
@@ -45,27 +46,36 @@ export function App() {
     }, 500);
   }, [fileName]);
 
-  // Initialise the grid, then restore any saved session.
+  // Load any saved session, then initialise the grid with that data.
   useEffect(() => {
     if (!containerRef.current || gridRef.current) return;
 
-    const emptyData = window.DataGridXL.createEmptyData(50, 26);
-    const grid = new window.DataGridXL("datagrid-container", {
-      data: emptyData,
-    });
-    gridRef.current = grid;
-
-    // Listen for any document change and auto-save.
-    grid.events.on("documentchange", () => persistRef.current());
-
-    // Attempt to restore a previous session.
     loadSession().then((session) => {
-      if (session) {
-        grid.setData(session.data);
-        setFileName(session.fileName);
-        showStatus("Session restored");
-      }
-      setRestoring(false);
+      if (!containerRef.current || gridRef.current) return;
+
+      const emptyData = window.DataGridXL.createEmptyData(
+        EMPTY_GRID.rows,
+        EMPTY_GRID.cols,
+      );
+      const grid = new window.DataGridXL("datagrid-container", {
+        data: emptyData,
+      });
+      gridRef.current = grid;
+
+      // DataGridXL doesn't invoke specific-event listeners registered via .on(),
+      // but the "any" wildcard does fire — filter by event name as a workaround.
+      grid.events.on("any", (_data: unknown, eventName: unknown) => {
+        if (eventName === "cellvaluechange") persistRef.current();
+      });
+
+      grid.events.on("ready", () => {
+        if (session) {
+          grid.setData(session.data);
+          setFileName(session.fileName);
+          showStatus("Session restored");
+        }
+        setRestoring(false);
+      });
     });
   }, [showStatus]);
 
@@ -132,7 +142,10 @@ export function App() {
   );
 
   const handleNew = useCallback(() => {
-    const emptyData = window.DataGridXL.createEmptyData(50, 26);
+    const emptyData = window.DataGridXL.createEmptyData(
+      EMPTY_GRID.rows,
+      EMPTY_GRID.cols,
+    );
     gridRef.current?.setData(emptyData);
     setFileName(null);
     void clearSession();
